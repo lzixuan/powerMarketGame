@@ -25,7 +25,7 @@
         "Fuel": "gas",
         "DescriptionCode": 2,
         "Capacity (MW)": 100,
-        "Generation Cost ($/MWh)": 50,
+        "Generation Cost ($/MWh)": 90,
         "Not-dispatched Penalty (per period)": 1000,
         "Location": 0
     },
