@@ -38,7 +38,7 @@ roleID_gameID = {}
 
 roleDescription = [
     'Plants that are running continuously over time and used to cater the base demand of the grid are said to be base-load power plants. Examples include nuclear, coal-fired, and combined cycles.\nYour power plant has large generation capacity and low marginal cost. But because of some physical and mechanical constraints (e.g. start or change output slowly), you will be penalized when not being dispatched.\nObjective: Maximize profit = market revenue - generation cost - penalty of not being dispatched\nOther Attributes:',
-    'Renewable power plants are pivotal components of the modern and future power grid, providing clean and sustainable sources of electricity. They harness energy from naturally occurring and replenishable resources like sunlight, wind, water, and geothermal heat.\nYou own a wind/solar power plant, whose generation depends on the weather but comes at nearly zero cost. In addition, you can get government tax credit for the generation you sell ($3/MWh in 2022). In the power market, you want to sell as much as possible of your generation so that you can earn back your investment sooner.\nObjective: maximize market revenue=market revenue + tax credit',
+    'Renewable power plants are pivotal components of the modern and future power grid, providing clean and sustainable sources of electricity. They harness energy from naturally occurring and replenishable resources like sunlight, wind, water, and geothermal heat.\nYou own a wind/solar power plant, whose generation depends on the weather but comes at nearly zero cost. In addition, you can get government tax credit for the generation you sell (assume $50/MWh). In the power market, you want to sell as much as possible of your generation so that you can earn back your investment sooner.\nObjective: maximize market revenue=market revenue + tax credit',
     'As the gamemaster, you are equivalent to load-serving entities (e.g. ComEd) and grid operator. The "Clear Market" button will trigger a dispatch solver that selects the least-cost combination of generator bids to meet the load in two places and advance the game to next period.'
 ]
 
@@ -55,7 +55,7 @@ loadProfile = {
     0: [400, 600, 800, 550],
     1: [50, 60, 70, 40]
 }
-transLimit = {1: 5000, 2: 200}
+transLimit = {1: 200, 2: 5000}
 
 periodBid_submitted = [False for i in range(0, 6)]
 class bid:
@@ -80,7 +80,7 @@ dispatchRes = {}
 revenue = {}
 profit = {}
 # renewable tax credit
-renewCredit = 3
+renewCredit = 50
 
 def showMarketInfo(roles):
     with use_scope('market', clear=True):
@@ -136,11 +136,24 @@ def showBids(period):
     if len(bids_period[period]) > 0:
         prices = [bid.price for bid in bids_period[period]]
         amounts = [bid.amount for bid in bids_period[period]]
-        fig = px.histogram(x=prices, y=amounts, histfunc='sum', nbins=50)
+        bidDf = pd.DataFrame()
+        bidDf['amount'] = amounts
+        bidDf['price'] = prices
+        bidDf.sort_values(by='price', inplace=True)
+        bidDf['accumAmount'] = bidDf['amount'].cumsum()
+        #print(bidDf)
+        fig = px.line(bidDf, x='accumAmount', y='price', line_shape='vh')
+        #fig = px.histogram(x=prices, y=amounts, histfunc='sum', nbins=50)
+        #fig = px.ecdf(x=amounts, y=prices, ecdfnorm=None, orientation='h')
         lmp_loc0 = clearingPrice[period - 1][0]
         lmp_loc1 = clearingPrice[period - 1][1]
-        fig.add_vline(x=lmp_loc0, line_dash='dash', line_color='firebrick', annotation_text='LMP_South', annotation_position='top left')
-        fig.add_vline(x=lmp_loc1, line_dash='dash', line_color='firebrick', annotation_text='LMP_North', annotation_position='top right')
+        fig.add_hline(y=lmp_loc0, line_dash='dash', line_color='firebrick', annotation_text='LMP_South', annotation_position='top left')
+        fig.add_hline(y=lmp_loc1, line_dash='dash', line_color='firebrick', annotation_text='LMP_North', annotation_position='top right')
+        totalLoad = loadProfile[0][period - 1] + loadProfile[1][period - 1]
+        fig.add_vline(x=totalLoad, line_dash='dash', line_color='orange', annotation_text='Total Load')
+        fig.update_layout(yaxis_title='Price ($/MW)')
+        fig.update_layout(xaxis_title='Accumulated Bid Generation (MW)')
+        fig.update_annotations(font_size=16)
         html = fig.to_html(include_plotlyjs="require", full_html=False)
         put_html(html)
 
@@ -204,7 +217,7 @@ def clearMarket(roles):
             role = roles[str(i)]
             if role['Fuel'] in ['wind', 'solar']:
                 bidGen = renewBidLimit[str(i)]
-                bidPrice = 0
+                bidPrice = -40
                 if role['Fuel'] == 'solar':
                     print(bidGen)
             else:
@@ -238,7 +251,7 @@ def control(choice, roles):
         showMarketRes(roles)
 
 def control_GM(choice, roles):
-    global round, period, renewBidLimit, dispatchRes, clearingPrice, periodBid_submitted, bids_period, revenue, profit
+    global round, period, renewBidLimit, dispatchRes, clearingPrice, periodBid_submitted, bids_period, revenue, profit, roleID_gameID
     if choice == 'View Market Information':
         showMarketInfo(roles)
     elif choice == 'Clear Market':
@@ -262,7 +275,6 @@ def control_GM(choice, roles):
     elif choice == 'Move to Next Round':
         if round == 1:
             clear('market')
-            round = 2
             # reset the states
             period = 1
             roleID_gameID = {}
@@ -284,6 +296,7 @@ def control_GM(choice, roles):
                 dispatchRes[i] = []
                 revenue[i] = 0
                 profit[i] = 0
+            round = 2
 
 def checkID(id):
     if (not id in range(1, 7)) and (not id == 1000):
@@ -301,7 +314,7 @@ def makeRoleCard(role):
                     put_text(f'{attrib}: {role[attrib]}')
 
 def main():
-    global roleID_gameID, dispatchRes
+    global roleID_gameID, dispatchRes, period
     roles = json.load(open('./generators.json'))
     id = input('Please input your game ID', type=NUMBER, required=True, validate=checkID)
 
@@ -319,6 +332,7 @@ def main():
                 dispatchRes[i] = []
                 revenue[i] = 0
                 profit[i] = 0
+                period = 1
         put_text(roleDescription[2])
         put_buttons(['View Market Information', 'Clear Market', 'Move to Next Round'], onclick=partial(control_GM, roles=roles))
     # player interface
@@ -329,6 +343,7 @@ def main():
             roleID = gameID_role[id][f'round {round}']
             # map the role ID to game ID
             roleID_gameID[roleID] = id
+            #print(roleID_gameID)
             roleByRealPlayer[roleID - 1] = True
             role = roles[str(roleID)]
             makeRoleCard(role)
