@@ -2,7 +2,7 @@
     "1": {
         "Fuel": "coal",
         "DescriptionCode": 0,
-        "Capacity (MW)": 400,
+        "Capacity (MW)": 200,
         "Generation Cost ($/MWh)": 10,
         "Not-dispatched Penalty (per period)": 1000,
         "Location": 0
@@ -31,17 +31,18 @@
     },
     "5": {
         "Fuel": "gas",
-        "DescriptionCode": 0,
+        "DescriptionCode": 2,
         "Capacity (MW)": 150,
         "Generation Cost ($/MWh)": 30,
         "Not-dispatched Penalty (per period)": 1000,
         "Location": 0
     },
     "6": {
-        "Fuel": "solar",
-        "DescriptionCode": 1,
-        "Nameplate Capacity (Maximum possible generation MW)": 50,
-        "Generation Cost ($/MWh)": 0,
+        "Fuel": "coal",
+        "DescriptionCode": 0,
+        "Capacity (MW)": 200,
+        "Generation Cost ($/MWh)": 12,
+        "Not-dispatched Penalty (per period)": 1000,
         "Location": 0
     }
 }
